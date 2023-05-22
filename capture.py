@@ -6,7 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
-from utils_me import eval_R_error, eval_T_error, get_gtR, get_gtT
+from utils import eval_R_error, eval_T_error, get_gtR, get_gtT
 
 """
 読み込む視点番号の決定．
