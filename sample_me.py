@@ -2,13 +2,10 @@ import datetime
 import os
 import pprint
 import sys
-
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
-
-# このファイルと同一のディレクトリにutils.pyを配置してください
 from utils_me import eval_R_error, eval_T_error, get_gtR, get_gtT
 
 """
@@ -20,17 +17,14 @@ from utils_me import eval_R_error, eval_T_error, get_gtR, get_gtT
 NNNNNNは 000000から始まる6桁の連番
 
 下記は，その連番入力データから，順番に読み込む番号を決め,int型のframes_nums配列に読み込む視点番号を決めるプログラム
-このプログラムを書き直して 任意の視点番号をframes_nums配列に入力すれば 位置合わせする視点番号を任意に指定できる
 """
 
 # パラメータの定義を行う
 
-R_error = True  # Rの誤差評価のflag
+R_error = True
 T_error = True
-save_log = True  # log保存のflag
+save_log = True 
 
-# ここのサンプルでは，000000から始まって，skin_N_frames毎に読み込む指定をしている
-# 視点0~len(frames_nums)-1 までの視点となる．視点数はlen(frames_nums)
 num_Frames = 110  # フォルダに入ってる多視点RGBD画像の視点数
 skip_N_frames = 4  # 読み込むときのスキップ枚数指定．１の時は各視点読み込む
 frames_nums = np.arange(0, num_Frames, skip_N_frames)
@@ -39,8 +33,6 @@ N = len(frames_nums)  # 視点数
 
 """
 ICPアルゴリズムに関するパラメータ
-
-3種類のICPアルゴリズムがある. 実行するICPアルゴリズムに対応する数字をicp_numに入れてください.
     0:PointToPoint
     1:PointToPlane
     2:ForGeneralizedICP
@@ -55,9 +47,7 @@ voxel_length = 0.001  # meters # ~ 1cm
 sdf_trunc = 0.01  # meters # ~ several voxel_lengths
 
 """
-データの存在しているdirectoryを指定する.
-Working Directoryからの相対パスで指定している．
-必要に応じてパスを追加してください．
+データの存在しているdirectoryを指定
 """
 # data_dir= "TUM/Bunny/Synthetic_bunny_Circle/"
 # data_dir= "TUM/Bunny/Synthetic_bunny_Wave/"
@@ -71,20 +61,12 @@ Working Directoryからの相対パスで指定している．
 # data_dir= "TUM/Teddy/Synthetic_Teddy_Circle/"
 # data_dir= "TUM/Teddy/Synthetic_Teddy_Wave/"
 
-data_dir = "../data/TUM/Leopard/Synthetic_Leopard_Circle/"
+data_dir = "TUM/Leopard/Synthetic_Leopard_Circle/"
 # data_dir= "TUM/Leopard/Synthetic_Leopard_Wave/"
 
 # data_dir= "TUM/Teddy/Kinect_Teddy_Handheld/"
 # data_dir= "TUM/Leopard/Kinect_Leopard_Turntable/"
 
-# data_dir= "rgb_inhand/cheezit/"
-# data_dir= "rgb_inhand/mustard/"
-
-"""
-stanfordデータは画像サイズが大きいので処理に時間がかかります.
-"""
-# data_dir= "stanford/figure-mvs/"
-# data_dir= "stanford/sokrates-mvs/"
 
 
 """
@@ -92,7 +74,7 @@ stanfordデータは画像サイズが大きいので処理に時間がかかり
 """
 
 path_list = data_dir.split("/")
-data = path_list[-2]  # 例えば"Synthetic_Teddy_Circle"などがdataに入っている.
+data = path_list[-2]
 print(f"{data} used")
 
 dTime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -108,11 +90,11 @@ data_list = data.split("_")
 if R_error:
     if "Synthetic" in data_list:
         if "Circle" in data_list:
-            ideal_Rs = get_gtR("../data/TUM/synthetic_circle_poses.txt")  # 実際の値を取得
+            ideal_Rs = get_gtR("TUM/synthetic_circle_poses.txt")
         elif "Wave" in data_list:
-            ideal_Rs = get_gtR("../data/TUM/synthetic_wave_poses.txt")  # 実際の値を取得
+            ideal_Rs = get_gtR("TUM/synthetic_wave_poses.txt")
     elif "Kinect" in data_list:
-        ideal_Rs = get_gtR(data_dir + "markerboard_poses.txt")  # 実際の値を取得
+        ideal_Rs = get_gtR(data_dir + "markerboard_poses.txt") 
     elif "rgb_inhand" in path_list:
         R_error = False
         print("You are using rgb_inhand dataset so R_error is not available.")
@@ -124,11 +106,11 @@ if R_error:
 if T_error:
     if "Synthetic" in data_list:
         if "Circle" in data_list:
-            ideal_Ts = get_gtT("../data/TUM/synthetic_circle_poses.txt")  # 実際の値を取得
+            ideal_Ts = get_gtT("../data/TUM/synthetic_circle_poses.txt")
         elif "Wave" in data_list:
-            ideal_Ts = get_gtT("../data/TUM/synthetic_wave_poses.txt")  # 実際の値を取得
+            ideal_Ts = get_gtT("../data/TUM/synthetic_wave_poses.txt") 
     elif "Kinect" in data_list:
-        ideal_Ts = get_gtT(data_dir + "markerboard_poses.txt")  # 実際の値を取得
+        ideal_Ts = get_gtT(data_dir + "markerboard_poses.txt") 
     elif "rgb_inhand" in path_list:
         T_error = False
         print("You are using rgb_inhand dataset so T_error is not available.")
@@ -137,13 +119,6 @@ if T_error:
         print("You are using stanford dataset so T_error is not available.")
 
 
-
-
-"""
-Depth画像に対するマスク画像が存在する場合は1を指定する. このプログラムでは自動で指定するようになっている.
-マスク画像は,物体領域以外のDepthデータを削除するための物体領域マスクを指定する画像
-事前にDepth画像から物体領域以外のDepth=0と指定されているDepth画像を利用する場合は0.
-"""
 
 # dataに合わせてuse_omaskを設定
 if ("Synthetic" in data_list) or ("stanford" in path_list):
@@ -194,11 +169,10 @@ for i in range(0, N):  # 視点0~N-1まで
 
     # 3D点群（各視点）を保存するためのファイル名の設定
     ply_file = result_dir + "points_%06d.ply" % (frames_nums[i])
-    all_ply_file = result_dir + "allpoints.ply"  # 全視点を統合した3D点群を保存するためのファイル名の設定
-    mesh_file = result_dir + "mesh.ply"  # 統合後生成する3Dメッシュデータを保存するためのファイル名の設定
+    all_ply_file = result_dir + "allpoints.ply"  # 全視点を統合した3D点群
+    mesh_file = result_dir + "mesh.ply"  # 統合後生成する3Dメッシュデータ
 
     RGBim = cv2.imread(rgb_file, cv2.IMREAD_COLOR)  # RGB画像をファイルから読み込む
-    # RGBの順番を入れ替えている（OpenCVの仕様のため）
     RGBim = cv2.cvtColor(RGBim, cv2.COLOR_BGR2RGB)
     Depthim = cv2.imread(
         depth_file, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR
@@ -213,7 +187,7 @@ for i in range(0, N):  # 視点0~N-1まで
 
     ###############################################################################
     if use_omask:
-        # 物体マスク画像を利用してマスク画像の画素値が０場合はそのDepth値を０としている．
+        # 物体マスク画像を利用してマスク画像の画素値が０の場合はそのDepth値を０としている．
         # 入力の物体領域マスク画像のファイル名の設定
         omask_file = data_dir + "omask_%06d.png" % (frames_nums[i])
         omask_image = cv2.imread(omask_file, cv2.IMREAD_GRAYSCALE)
@@ -230,7 +204,7 @@ for i in range(0, N):  # 視点0~N-1まで
     rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(
         color, depth, convert_rgb_to_intensity=False
     )
-    rgbds.append(rgbd)  # rgb画像のリストに追加
+    rgbds.append(rgbd)
 
     # 　生成したｒｇｂｄ画像をplot画面に表示
     plt.subplot(1, 2, 1)
@@ -247,24 +221,23 @@ for i in range(0, N):  # 視点0~N-1まで
     # 生成した３D点群の各点群の法線ベクトルを計算
     o3d.geometry.PointCloud.estimate_normals(p, search_param=kdt)
 
-    pcd.append(p)  # ３D点群のリストに追加
+    pcd.append(p) 
 
-    # 各視点の3D点群（plyファイル）をセーブしたい場合は下記を使う
-    # o3d.io.write_point_cloud(ply_file, p)
+    o3d.io.write_point_cloud(ply_file, p)
 
-    # セーブ済みのplyファイルから読み込む場合は下記を使う
+    # セーブ済みのplyファイルから読み込む場合
     # p= o3d.io.read_point_cloud(ply_file)
     # pcd.append(p)
 
 # ICP位置合わせ前の全３D点群を表示
-# o3d.visualization.draw_geometries(pcd, "input ", 640, 480)
+o3d.visualization.draw_geometries(pcd, "input ", 640, 480)
 
 ############ 隣り合う視点のPointCloud間のICP位置合わせ#######################
 
 RT = []  # i+1 番目のPointCloudをi番目のPointCloudに変換するRTのリスト
 info_list = []  # ICPの評価結果を保存しておくリスト
 
-RT.append(np.identity(4))  # 最初の視点RT[0]が基準になるので，RT[0]には無変換行列を代入しておく
+RT.append(np.identity(4))
 
 if icp_num == 0:
     icp = "PointToPoint"
@@ -310,8 +283,6 @@ for i in range(0, N - 1):
     #print("RMSE: ", info.inlier_rmse)
     #print("transformation: \n", info.transformation, flush=True)
     info_list.append(info)
-
-    # 視点RT[i+1]に，i番目のループで求めたpcd[i+1]をpcd[i]に変換する変換行列を保存しておく．
     RT.append(info.transformation)
 
 # 視点iを最初の視点（0）に変換するRT[i]を計算する．
@@ -323,10 +294,7 @@ for i in range(0, N):
     pcd[i].transform(RT[i])
 
 # ICP位置合わせ後の全３D点群を表示
-#o3d.visualization.draw_geometries(pcd, "output ", 640, 480)
-
-
-# 位置合わせされた全ての点群メッシュモデルを保存する場合は下記のコメントは外す
+o3d.visualization.draw_geometries(pcd, "output ", 640, 480)
 
 pcd_combined = o3d.geometry.PointCloud()
 for i in range(0, N):
@@ -337,7 +305,7 @@ o3d.io.write_point_cloud(all_ply_file, pcd_combined)
 ##=============##         TSDF VOLUME INTEGRATION             ##=============##
 # ==============================================================================
 
-# print("\n== TSDF volume integration: ==")
+print("\n== TSDF volume integration: ==")
 
 volume = o3d.pipelines.integration.ScalableTSDFVolume(
     voxel_length=voxel_length,  # meters # ~ 1cm
@@ -346,7 +314,6 @@ volume = o3d.pipelines.integration.ScalableTSDFVolume(
 )
 
 for i in range(0, N):
-    # print("Integrate %s-th image into the volume." % i)
     volume.integrate(rgbds[i], pinhole_camera_intrinsic, np.linalg.inv(RT[i]))
 
 # ==============================================================================
@@ -359,17 +326,11 @@ print(
 )
 
 mesh = volume.extract_triangle_mesh()
-# print(mesh.compute_vertex_normals(), flush=True)
+print(mesh.compute_vertex_normals(), flush=True)
 
-# o3d.visualization.draw_geometries([mesh])
-
-# 最後に生成されたメッシュモデルを保存する場合は下記のコメントは外す
+o3d.visualization.draw_geometries([mesh])
 o3d.io.write_triangle_mesh(mesh_file, mesh)
 
-"""
-実験の比較に必要なパラメータをtxtファイルに出力する. そのためにパラメータ用の辞書を作成している.
-追加したいパラメータがある場合は、以下のフォーマットに則ってprmdicに追加してください.
-"""
 prmdic = {}
 prmdic["dataset"] = data
 prmdic["num_Frames"] = num_Frames
@@ -404,8 +365,6 @@ if save_log:
             f.write("\n")
     print("Log saved")
 
-
-# errorを出力するための準備
 if R_error:
     estimated_Rs = []
     for rt in RT:
